@@ -19,7 +19,7 @@
 
 ## Address Clustering Heuristics
 
-*Reference: Friedhelm Victor, "Address Clustering Heuristics for Ethereum", Financial Cryptography (FC) 2020*
+*Reference: Friedhelm Victor, ["Address Clustering Heuristics for Ethereum"](https://fc20.ifca.ai/preproceedings/31.pdf), Financial Cryptography*
 
 Three heuristics adapted for Ethereum's account model (unlike Bitcoin's common-input-ownership heuristic, Ethereum uses persistent EOA addresses, so clustering requires different approaches):
 

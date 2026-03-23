@@ -338,4 +338,4 @@ Heuristic signals for identifying automated liquidity provision bots vs passive 
 
 > **Confidence label convention:** Tag each identification as `[BOT: high/moderate/low confidence]` with the supporting signals listed. Never present bot classification as definitive without 3+ corroborating signals.
 
-*References: [Milionis et al., "Automated Market Making and Loss-Versus-Rebalancing" (2023)](https://arxiv.org/abs/2305.14604); [Willetts & Harrington, "RVR: Rebalancing-versus-Rebalancing" (2024)](https://arxiv.org/abs/2410.23404)*
+*References: [Milionis et al., "Automated Market Making and Loss-Versus-Rebalancing"](https://arxiv.org/abs/2305.14604); [Willetts & Harrington, "RVR: Rebalancing-versus-Rebalancing"](https://arxiv.org/abs/2410.23404)*
