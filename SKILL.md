@@ -157,6 +157,8 @@ Read `references/abi-fetching.md` for proxy detection. Read `references/rpc-fiel
 - Etherscan `getsourcecode`, Sourcify, 4byte.directory
 - Entity labels → heuristic, confidence auto-downgraded
 
+**Tier D Precondition:** Before using any Tier D source for a given finding, the equivalent Tier A query MUST already exist in the evidence register. Tier D enriches; it never substitutes. If Tier A is unavailable, disclose the gap — do not fill it with Tier D.
+
 **Output: Reconnaissance summary table.** Every field tagged with source tier. Unavailable fields marked `N/A (requires Tier X)`.
 
 ```
