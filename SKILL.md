@@ -1,6 +1,6 @@
 ---
 name: defi-onchain-analytics
-description: Performs DeFi on-chain analytics via raw JSON-RPC. Use when profiling wallets, analyzing protocols or pools, inspecting token metrics, evaluating DEX liquidity, or reading smart contract state on EVM chains (Ethereum, Arbitrum, Base, BSC, Polygon, Katana). Do NOT use for off-chain data, CEX analytics, or non-EVM chains.
+description: Performs DeFi on-chain analytics via raw JSON-RPC. Use when profiling wallets, analyzing protocols or pools, inspecting token metrics, evaluating DEX liquidity, reading smart contract state, tracing exploit fund flows, or investigating incidents on EVM chains (Ethereum, Arbitrum, Base, BSC, Polygon, Katana). Do NOT use for off-chain data, CEX analytics, or non-EVM chains.
 ---
 
 # DeFi On-Chain Analytics
@@ -114,6 +114,16 @@ Estimated effort: ~[N] RPC calls
 📜 Script trigger: [YES if any dependent flow / eth_getLogs scan / multi-hop trace is needed]
 🔍 Root cause standard: Any causal claim sourced from Tier D only → tagged [UNVERIFIED] until Tier A/B corroboration
 🧪 Claim typing: All major findings typed as FACT_ONCHAIN / INFERENCE_ONCHAIN / EXTERNAL_ASSERTION before Phase 4
+═══════════════════════════
+```
+
+*Example of a filled-in contract (incident forensics):*
+```
+═══ ANALYTICAL CONTRACT ═══
+⚙ Tier A baseline: eth_getTransactionReceipt(attack_tx), eth_getLogs(USR token Transfer), eth_getBalance(exploiter)
+📜 Script trigger: YES — multi-hop fund flow tracing required; start from forensic-script-scaffold.ts
+🔍 Root cause standard: "AWS KMS compromise" is EXTERNAL_ASSERTION [UNVERIFIED] until eth_getLogs confirms SERVICE_ROLE key usage pattern
+🧪 Claim typing: All findings typed before Phase 4; no EXTERNAL_ASSERTION used as root cause without Tier A/B corroboration
 ═══════════════════════════
 ```
 
@@ -309,7 +319,7 @@ Total RPC calls / Analysis timestamp
 | DEX, swap, liquidity, LP, impermanent loss, volume | `patterns/dex-analytics.md` |
 | contract, storage, events, proxy, upgrade, ABI | `patterns/contract-inspection.md` |
 
-Multiple files may load if objective spans domains. Reference files (`references/`) loaded on-demand during Phase 1-2.
+Multiple files may load if objective spans domains. Reference files (`references/`) loaded on-demand during Phase 1-2. For incident forensics, `references/forensic-script-scaffold.ts` is the canonical starting script.
 
 ### Cascade Triggers
 
