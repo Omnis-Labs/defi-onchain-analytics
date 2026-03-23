@@ -216,6 +216,8 @@ Read `references/rpc-field-guide.md` for method details. Read `references/common
 
 Scripts must be self-contained and runnable via `node` or `npx tsx`.
 
+**Scaffold:** For incident forensics, start from `references/forensic-script-scaffold.ts` — covers tx receipt decoding, adaptive log scanning, multi-hop fund flow tracing, and evidence register output.
+
 **Execution discipline:**
 - Log purpose before every query
 - Decode all hex inline — never leave raw hex
