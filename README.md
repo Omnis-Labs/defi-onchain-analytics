@@ -54,7 +54,10 @@ SKILL.md                    Main looped workflow (396 lines)
 ├── references/
 │   ├── rpc-field-guide.md      RPC methods, chunking, L2 guide, explorer APIs
 │   ├── rpc-endpoints.ts        108 verified endpoints across 6 chains
-│   ├── common-abis.md          ERC-20/721/1155/4626, V3/V4, Algebra CLAMM
+│   ├── common-abis.md          Objective router for ABI loading
+│   ├── abis-core-tokens-vaults.md  ERC-20/721/1155/4626 signatures and selectors
+│   ├── abis-dex-v3-v4-clamm.md     Uniswap V3/V4 and Algebra CLAMM state/events
+│   ├── abis-proxy-and-multicall.md EIP-1967 proxy slots and Multicall3
 │   ├── abi-fetching.md         Proxy detection and ABI resolution
 │   ├── scoping-guide.md        Phase 0 detailed consultation guide
 │   ├── investigation-discipline.md  7-layer anti-shortcutting defense
@@ -125,7 +128,7 @@ Contributions welcome. The most impactful contributions are:
 
 - **New chain endpoints** — Add verified RPC endpoints to `references/rpc-endpoints.ts`
 - **Pattern expansions** — Extend analytical methods in `patterns/` files
-- **ABI references** — Add protocol ABIs to `references/common-abis.md`
+- **ABI references** — Add protocol ABIs to the appropriate split file in `references/` (`abis-core-tokens-vaults.md`, `abis-dex-v3-v4-clamm.md`, or `abis-proxy-and-multicall.md`)
 - **Bug reports** — Real-world cases where the skill gave incorrect guidance
 
 ## License

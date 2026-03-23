@@ -47,7 +47,7 @@ Compare `topics[0]` against known event signature hashes. The signature hash is 
 | `Swap(...)` (Uniswap V2) | `0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822` |
 | `Swap(...)` (Uniswap V3) | `0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67` |
 
-Reference `references/common-abis.md` for the full signature catalog.
+Reference `references/abis-core-tokens-vaults.md` (token standards), `references/abis-dex-v3-v4-clamm.md` (Uniswap/Algebra CLAMM), and `references/abis-proxy-and-multicall.md` (proxy slots, Multicall3) for the full signature catalog.
 
 ### Step 3 — Extract Indexed Parameters
 

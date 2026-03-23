@@ -47,10 +47,43 @@ digraph phases {
 
 ### Scope Amendment (Re-entry)
 
-When Phase 3 interpretation reveals a new analytical question that changes the objective:
+When Phase 3 interpretation reveals a new analytical question that changes the objective, the investigation loops back to Phase 0 in amendment mode. Without strict rules, this loop degenerates into "ask again" — so the state machine below governs every re-entry.
 
-1. **Lightweight re-entry:** Skip intent discovery. Only update: target, objective, anchor policy, additional pattern files. Preserve all existing anchors and evidence.
-2. **Hard cap:** Max 3 scope amendments per session. Beyond that, synthesize what you have and list remaining questions as Open Questions in Phase 5. This prevents infinite investigation loops.
+**Valid rescope triggers:**
+
+| Trigger | Example |
+|---------|---------|
+| New unit of analysis discovered | Investigating a vault → found the strategy contract is the real subject |
+| Objective fundamentally changed | Started with "is this vault profitable?" → discovered potential exploit |
+| Chain expansion needed | Fund flow leads to a bridge contract → need to trace on source chain |
+
+**NOT a rescope (handle in-phase):**
+
+| Situation | Instead |
+|-----------|---------|
+| Need more data on same target | Continue Phase 2 — add queries |
+| Found unknown contract during analysis | Load `contract-inspection.md` via cascade trigger |
+| Confidence too low on a finding | Apply Layer 5 (Confidence Deepening) — don't restart |
+
+**Carry-forward rules:** On rescope, the following are preserved unchanged unless explicitly overridden:
+- Chain, anchor policy, anchor block, capability tier, RPC endpoint
+- All existing evidence register entries
+- All pattern files already loaded
+
+**Only these fields may change:** target, objective, unit of analysis, hypothesis, timeframe, additional pattern files.
+
+**Completion criteria per mode:**
+
+| Mode | Done when |
+|------|-----------|
+| 🔍 Forensic | Root cause attributed with claim type + all fund hops traced to terminus or gap disclosed |
+| 📊 Due Diligence | All decision-critical metrics computed + gaps flagged |
+| 📈 Monitoring | Current state snapshot complete + health indicators evaluated |
+| 🏗️ Protocol Assessment | Key metrics + risk dimensions scored |
+| 🛡️ Security | Admin/upgrade/custody risk assessed + findings severity-ranked |
+| 🔭 Exploratory | Survey breadth covers user's question + open questions listed |
+
+**Hard cap:** Max 3 scope amendments per session. Beyond that, synthesize what you have and list remaining questions as Open Questions in Phase 5.
 
 ---
 
@@ -102,15 +135,20 @@ If the user's request clearly maps to one mode, **propose it** rather than askin
 
 #### Decision Dependencies
 
-Some data sources are not just enrichment — they change the analytical conclusion:
+Some conditions — not just missing data sources — can flip the analytical conclusion entirely:
 
-| Analysis Type | Decision-Critical Data | Without It |
+| Condition | Impact | Without Checking |
 |---|---|---|
-| LP/vault performance | External rewards (Merkl, Angle, etc.) | Raw alpha appears negative when net return is positive |
-| Token due diligence | Vesting schedule + unlock events | Circulating supply appears stable when unlocks are imminent |
-| Protocol risk | Oracle staleness + backup fallback | Protocol appears healthy when oracle is stale |
+| External rewards (Merkl, Angle, etc.) | LP/vault alpha reversal | Raw alpha appears negative when net return is positive |
+| Vesting schedule + unlock events | Supply shock | Circulating supply appears stable when unlocks are imminent |
+| Oracle staleness + backup fallback | Protocol health misjudged | Protocol appears healthy when oracle is stale |
+| Provider endpoint inconsistency | Data conflict | Two endpoints return different logs for the same range — analysis built on partial data |
+| Proxy upgraded during scan window | ABI/layout mismatch | Events decoded with wrong ABI; storage reads return garbage for blocks after upgrade |
+| Unresolved bridge leg | Incomplete fund flow | Funds appear to vanish at bridge contract; actual destination chain not traced |
+| Token/share conversion uncertainty | Value miscalculation | Vault share counted as underlying token; 1 share ≠ 1 token |
+| Partial `eth_getLogs` coverage | Silent truncation | Provider hit result cap but returned no error; event history appears complete but is missing entries |
 
-If the analysis mode is 📊 Due Diligence or 📈 Monitoring and a decision-critical source is unavailable, flag it as: `⚠️ DECISION-CRITICAL GAP: [source] unavailable. Conclusion may reverse with this data.`
+If any decision-critical condition is unverified, flag it as: `⚠️ DECISION-CRITICAL GAP: [condition] unverified. Conclusion may reverse.`
 
 #### Blind Spot Disclosure
 
@@ -179,6 +217,8 @@ If target is a proxy:
 
 This step is not optional. For any contract beyond a standard ERC-20, interface discovery typically determines whether the investigation succeeds or fails. Skipping it means every subsequent `eth_call` is a guess.
 
+**Watch for same-address multiple roles:** Some DeFi systems use a single contract as vault + share token + strategy router simultaneously. If the target serves multiple roles, document all interfaces discovered — don't stop at the first successful ABI match.
+
 **Step 3 — Address Context `[CORE]`:**
 - `eth_getBalance`, `eth_getTransactionCount`, `eth_getStorageAt` for owner/admin slots
 - Lineage (deployer, creation tx): `[ENRICH]` — mark `N/A` in strict RPC mode
@@ -197,7 +237,7 @@ This step is not optional. For any contract beyond a standard ERC-20, interface 
 
 **Rule: Block-anchor everything. Probe before assuming. Disclose gaps.**
 
-Read `references/rpc-field-guide.md` when choosing RPC methods or when `eth_getLogs` returns an error code. Read `references/common-abis.md` for event signatures.
+Read `references/rpc-field-guide.md` when choosing RPC methods or when `eth_getLogs` returns an error code. Load ABI references by objective: `references/abis-core-tokens-vaults.md` (tokens/vaults), `references/abis-dex-v3-v4-clamm.md` (Uniswap/Algebra CLAMM), and `references/abis-proxy-and-multicall.md` (proxy slots/Multicall3).
 
 **Tier 1 — Batch Reads `[CORE]`:**
 - Multicall3 or JSON-RPC batch, pinned to single block number
@@ -242,6 +282,12 @@ Scripts must be self-contained and runnable via `node` or `npx tsx`.
 - Decode all hex inline — raw hex in output means the analysis is unreadable to the user
 - Use fallback endpoints on failure
 - Disclose when methods are skipped due to tier
+
+**Practical failure modes to watch for:**
+- **Silent `eth_getLogs` truncation:** Provider hit result cap but returned no error — event history appears complete but has gaps. Cross-check total event count against a second endpoint or block explorer if feasible.
+- **Endpoint disagreement:** Two providers return different log counts for the same range. This typically means one hit an undocumented limit. Always note which endpoint was used per query.
+- **L2 timestamp mismatch:** On OP Stack and Arbitrum, `block.timestamp` semantics differ from L1. Sorting by timestamp across chains without normalization produces incorrect chronology.
+- **Scan window crosses proxy upgrade:** If the target contract was upgraded during your `fromBlock→toBlock` range, events before and after the upgrade may have different ABIs. Check `Upgraded` events on the proxy before scanning.
 
 ---
 
@@ -368,22 +414,9 @@ Read `references/investigation-discipline.md` for full methodology, DeFi-specifi
 | 6 | **Adversarial Self-Review** | Per major finding: "What is the opposite interpretation?" + "What adjacent pattern does this obscure?" + "What would falsify this?" + "Does any other finding enable this?" | Always (documented in 🔍) |
 | 7 | **Gap Logging** | Every skipped method/source logged with reason and potential impact. Silent omission = discipline violation. | Always |
 
-### Banned Dismissal Phrases
+### Banned Dismissal Phrases & Common Rationalizations
 
-If these appear in your reasoning → treat as investigation signal, not conclusion:
-
-> "probably just a whale" · "likely normal behavior" · "this is expected for a DEX pool" · "no suspicious activity found" · "the amounts are not unusual" · "this is just MEV" · "the timing is coincidental"
-
-### Common Rationalizations
-
-| Rationalization | Why It's Wrong |
-|----------------|---------|
-| "Let me just quickly check the balance" | Even a balance check needs chain + anchor. Without Phase 0, you might query the wrong chain. |
-| "I don't need to probe the provider" | Provider capabilities vary wildly. Probing once prevents hours of debugging failed calls. |
-| "This is just a simple token lookup" | Simple lookups still need the scoping form. Today's "simple lookup" becomes tomorrow's "why did I query the wrong address?" |
-| "I'll decode the hex later" | Raw hex in output means anyone reviewing your work has to redo the decoding. Decode inline. |
-| "The block range is probably fine" | Guessing ranges risks timeout or silent truncation. Adaptive chunk or get incomplete data. |
-| "Traces aren't available so I'll skip fund flow" | The gap must be disclosed. Don't silently omit native ETH flows — they may contain the answer. |
+See `references/investigation-discipline.md` for the full list. The core rule: if you catch yourself wanting to dismiss a finding as "probably normal," that's an investigation signal, not a conclusion. Skipping Phase 0 "just for a quick check" is how wrong-chain queries happen.
 
 ## Red Flags — STOP
 

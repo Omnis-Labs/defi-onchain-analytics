@@ -264,3 +264,26 @@ Every skipped RPC method, unavailable data source, or abbreviated analysis step 
 ```
 
 Silent omission — reporting a conclusion without disclosing what analysis was NOT performed — is the single most dangerous failure mode in on-chain analytics. It creates false confidence in incomplete results.
+
+---
+
+## Banned Dismissal Phrases
+
+If these appear in your reasoning → treat as investigation signal, not conclusion:
+
+> "probably just a whale" · "likely normal behavior" · "this is expected for a DEX pool" · "no suspicious activity found" · "the amounts are not unusual" · "this is just MEV" · "the timing is coincidental"
+
+Each phrase represents a premature closure of investigation. When you feel the urge to write one, that's the moment to dig deeper — adversarial actors design their on-chain footprints to look exactly like "normal behavior."
+
+---
+
+## Common Rationalizations for Skipping the Workflow
+
+| Rationalization | Why It's Wrong |
+|----------------|---------|
+| "Let me just quickly check the balance" | Even a balance check needs chain + anchor. Without Phase 0, you might query the wrong chain. |
+| "I don't need to probe the provider" | Provider capabilities vary wildly. Probing once prevents hours of debugging failed calls. |
+| "This is just a simple token lookup" | Simple lookups still need the scoping form. Today's "simple lookup" becomes tomorrow's "why did I query the wrong address?" |
+| "I'll decode the hex later" | Raw hex in output means anyone reviewing your work has to redo the decoding. Decode inline. |
+| "The block range is probably fine" | Guessing ranges risks timeout or silent truncation. Adaptive chunk or get incomplete data. |
+| "Traces aren't available so I'll skip fund flow" | The gap must be disclosed. Don't silently omit native ETH flows — they may contain the answer. |

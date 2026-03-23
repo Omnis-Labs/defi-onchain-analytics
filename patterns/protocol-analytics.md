@@ -177,7 +177,7 @@ Balance changes without any Transfer events. Do NOT rely on Transfer event histo
 
 ## Uniswap V3/V4 Pool State Reading
 
-> For full V3/V4 ABI references (slot0, globalState, ticks, positions, Quoter), see `references/common-abis.md`. For V3 math formulas (sqrtPriceX96, tick-price, liquidity), see `patterns/dex-analytics.md`. For Algebra CLAMM differences (globalState vs slot0), see `references/common-abis.md` Algebra section.
+> For full V3/V4 ABI references (slot0, globalState, ticks, positions, Quoter), see `references/abis-dex-v3-v4-clamm.md`. For V3 math formulas (sqrtPriceX96, tick-price, liquidity), see `patterns/dex-analytics.md`. For Algebra CLAMM differences (globalState vs slot0), see `references/abis-dex-v3-v4-clamm.md`.
 
 Key reads for protocol analytics:
 - **V3:** `slot0()` (selector `0x3850c7bd`) → sqrtPriceX96, tick, feeProtocol. `liquidity()` → in-range only.
