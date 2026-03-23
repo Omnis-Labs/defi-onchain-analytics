@@ -105,6 +105,19 @@ If the user says "just do it" → fill in the contract yourself based on the Ana
 
 ---
 
+## Analytical Contract — Filled-In Example (Incident Forensics)
+
+```
+═══ ANALYTICAL CONTRACT ═══
+⚙ Tier A baseline: eth_getTransactionReceipt(attack_tx), eth_getLogs(USR token Transfer), eth_getBalance(exploiter)
+📜 Script trigger: YES — multi-hop fund flow tracing required; start from forensic-script-scaffold.ts
+🔍 Root cause standard: "AWS KMS compromise" is EXTERNAL_ASSERTION [UNVERIFIED] until eth_getLogs confirms SERVICE_ROLE key usage pattern
+🧪 Claim typing: All findings typed before Phase 4; no EXTERNAL_ASSERTION used as root cause without Tier A/B corroboration
+═══════════════════════════
+```
+
+---
+
 ## Anti-Patterns — STOP if you catch yourself doing these
 
 | ❌ Anti-pattern | ✅ Instead |

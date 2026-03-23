@@ -15,20 +15,22 @@ git clone https://github.com/Omnis-Labs/defi-onchain-analytics.git ~/.claude/ski
 
 ## What This Skill Does
 
-Guides AI agents through a structured 6-phase workflow for on-chain DeFi analysis:
+Guides AI agents through a **looped workflow** for on-chain DeFi analysis — supporting scope amendments when discoveries change the question:
 
-1. **Scoping Gate** — Define objectives, anchor policy, and data source constraints
-2. **Reconnaissance** — Contract classification, proxy detection, address context
-3. **Data Collection** — Batch reads, event log scanning, adaptive chunking, traces
+1. **Scoping Gate** — Define objectives, unit of analysis, anchor policy, decision dependencies
+2. **Discovery** — Contract classification, proxy resolution, interface recovery (first-class step)
+3. **Data Collection** — Batch reads, event log scanning, adaptive chunking, traces, bulk scaffolds
 4. **Interpretation** — Classification-first analysis with multi-pass adversarial review
-5. **Sanity Check** — Cross-validation, blind spot audit, gap logging
-6. **Synthesis** — Structured findings, confidence matrix, reproducibility footer
+5. **Rescope Decision** — New question emerged? Lightweight re-entry to Phase 0. Otherwise proceed.
+6. **Sanity Check** — Cross-validation, blind spot audit, gap logging
+7. **Synthesis** — Mode-specific output profiles (forensic, due diligence, monitoring, etc.)
 
 ### Capabilities
 
 - **Wallet profiling** — Balance snapshots, transfer history, entity clustering, funding trace
 - **Protocol analysis** — TVL decomposition, admin risk, oracle health, governance participation
 - **DEX analytics** — LP position analysis, owner resolution, market structure, bot detection
+- **CLAMM vault analytics** — Rebalance decomposition, fee separation, share-price time series, HODL benchmarks
 - **Token metrics** — Supply audit, holder concentration, vesting schedules
 - **Contract inspection** — Proxy detection, storage layout, event decoding, ABI resolution
 
@@ -48,19 +50,22 @@ Guides AI agents through a structured 6-phase workflow for on-chain DeFi analysi
 ## Skill Architecture
 
 ```
-SKILL.md                    Main workflow (364 lines)
+SKILL.md                    Main looped workflow (396 lines)
 ├── references/
 │   ├── rpc-field-guide.md      RPC methods, chunking, L2 guide, explorer APIs
 │   ├── rpc-endpoints.ts        108 verified endpoints across 6 chains
 │   ├── common-abis.md          ERC-20/721/1155/4626, V3/V4, Algebra CLAMM
 │   ├── abi-fetching.md         Proxy detection and ABI resolution
 │   ├── scoping-guide.md        Phase 0 detailed consultation guide
-│   └── investigation-discipline.md  7-layer anti-shortcutting defense
+│   ├── investigation-discipline.md  7-layer anti-shortcutting defense
+│   ├── data-collection-scaffold.ts  Bulk RPC with rate limiting, endpoint rotation, checkpoint/resume
+│   └── proxy-resolver-scaffold.ts   Automated proxy chain resolution and selector extraction
 └── patterns/
     ├── wallet-analytics.md     Address clustering, funding trace, Sybil detection
     ├── protocol-analytics.md   TVL, lending health, oracle monitoring
     ├── token-analytics.md      Supply audit, holder analysis
     ├── dex-analytics.md        V3 math, LP resolution, bot signals
+    ├── clamm-vault-analytics.md  Rebalance decomposition, fee separation, share-price, LVR
     └── contract-inspection.md  Storage layout, proxy patterns, event decoding
 ```
 

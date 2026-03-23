@@ -177,57 +177,16 @@ Balance changes without any Transfer events. Do NOT rely on Transfer event histo
 
 ## Uniswap V3/V4 Pool State Reading
 
-### Uniswap V3: Direct Pool Contract
+> For full V3/V4 ABI references (slot0, globalState, ticks, positions, Quoter), see `references/common-abis.md`. For V3 math formulas (sqrtPriceX96, tick-price, liquidity), see `patterns/dex-analytics.md`. For Algebra CLAMM differences (globalState vs slot0), see `references/common-abis.md` Algebra section.
 
-Each V3 pool is a standalone contract. Read `slot0()` for current state:
-
-```
-slot0() returns (
-    uint160 sqrtPriceX96,          // current sqrt(price) in Q64.96 format
-    int24   tick,                   // current tick (derived from sqrtPriceX96)
-    uint16  observationIndex,       // index of last written oracle observation
-    uint16  observationCardinality, // current max number of oracle observations
-    uint16  observationCardinalityNext, // next max (grows when expanded)
-    uint8   feeProtocol,           // protocol fee as % of LP fee (0 or 1/N)
-    bool    unlocked               // reentrancy lock (true = not locked)
-)
-```
-
-Additional key reads:
-- `liquidity()` -> current in-range liquidity (uint128)
-- `fee()` -> pool fee tier in hundredths of a bip (500 = 0.05%, 3000 = 0.30%, 10000 = 1.00%)
-- `ticks(int24 tick)` -> per-tick state including `liquidityNet` (int128)
-- `positions(bytes32 key)` -> per-position liquidity and fee accounting
-
-### Uniswap V4: Singleton PoolManager via StateLibrary
-
-V4 uses a single `PoolManager` contract for all pools. Pool state is internal storage accessed via the `StateLibrary` helper:
-
-```
-slot0 contains 4 fields only:
-    uint160 sqrtPriceX96     // current price
-    int24   tick              // current tick
-    uint24  protocolFee       // protocol fee setting
-    uint24  lpFee             // LP fee (can be dynamic in V4)
-```
-
-V4 removed the oracle observation fields (protocols use external oracles or hooks) and the reentrancy lock (replaced by transient storage lock). The `lpFee` field replaces the fixed fee tier -- V4 pools can have dynamic fees managed by hooks.
-
-Read V4 pool state via `StateLibrary.getSlot0(poolManager, poolId)` where `poolId = keccak256(abi.encode(PoolKey))`.
+Key reads for protocol analytics:
+- **V3:** `slot0()` (selector `0x3850c7bd`) → sqrtPriceX96, tick, feeProtocol. `liquidity()` → in-range only.
+- **V4:** `StateLibrary.getSlot0(poolManager, poolId)` → sqrtPriceX96, tick, protocolFee, lpFee.
+- **Algebra:** `globalState()` (selector `0xe76c01e4`) replaces `slot0()`. See detection: call `globalState()` first; if it reverts, try `slot0()`.
 
 ### CRITICAL: In-Range vs Total Liquidity
 
-`liquidity()` (V3) or `StateLibrary.getLiquidity()` (V4) returns ONLY the liquidity that is active at the current tick. This is NOT total pool liquidity.
-
-Liquidity providers can set arbitrary tick ranges. Only positions whose range includes the current tick contribute to the reported `liquidity()` value. Positions out of range (current price outside their tick bounds) are not counted.
-
-**To compute total pool liquidity:**
-1. Query all `Mint` and `Burn` events for the pool
-2. Build a tick-indexed liquidity map: for each initialized tick, sum `liquidityNet` values
-3. Walk ticks from MIN_TICK to MAX_TICK, accumulating `liquidityNet` to reconstruct the full liquidity distribution
-4. Total = sum of all position liquidity values (or equivalently, the area under the liquidity curve)
-
-This is expensive. For a rough approximation, scan the ticks immediately surrounding the current tick (e.g., +/- 10 tick spacings) to estimate concentrated liquidity nearby.
+`liquidity()` returns ONLY liquidity active at the current tick — NOT total pool liquidity. Positions out of range are not counted. To compute total, query all `Mint`/`Burn` events and reconstruct the tick-indexed liquidity distribution. For a rough approximation, scan ticks ±10 tick spacings around current tick.
 
 ---
 

@@ -157,24 +157,14 @@ You must know the exact layout to decode packed slots correctly. Reading a packe
 
 ## Proxy Inspection `[CORE]`
 
-### EIP-1967 Slot Reads
-
-Read standardized storage slots via `eth_getStorageAt` to identify proxy patterns:
-
-| Slot | Purpose | Derivation |
-|------|---------|------------|
-| `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc` | Implementation address | `keccak256("eip1967.proxy.implementation") - 1` |
-| `0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50` | Beacon address | `keccak256("eip1967.proxy.beacon") - 1` |
-| `0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103` | Admin address | `keccak256("eip1967.proxy.admin") - 1` |
-
-A non-zero value in any of these slots confirms the contract is a proxy.
+> For EIP-1967 slot values, proxy detection flow, EIP-1167 detection, and bytecode selector extraction procedures, see `references/abi-fetching.md` — the authoritative reference for all proxy resolution. For an automated script, see `references/proxy-resolver-scaffold.ts`.
 
 ### Follow the Implementation Chain
 
-1. Read the implementation slot. Non-zero = Transparent or UUPS proxy. The value is the implementation contract address.
-2. Read the beacon slot. Non-zero = Beacon proxy. Call `implementation()` on the beacon address via `eth_call` to get the current implementation.
-3. **Check if the implementation is itself a proxy.** Read EIP-1967 slots on the implementation address. If non-zero, follow the chain again. Repeat until you reach a non-proxy contract. This chain-following is essential — some architectures use proxy-to-proxy delegation.
-4. If all EIP-1967 slots are zero, proceed to bytecode-level checks (EIP-1167 minimal proxy pattern, Diamond proxy loupe functions).
+1. Read the EIP-1967 implementation slot. Non-zero = Transparent or UUPS proxy.
+2. Read the beacon slot. Non-zero = Beacon proxy. Call `implementation()` on the beacon to get the current implementation.
+3. **Check if the implementation is itself a proxy.** Read EIP-1967 slots on the implementation. Repeat until you reach a non-proxy contract — some architectures use proxy-to-proxy delegation.
+4. If all EIP-1967 slots are zero, proceed to bytecode-level checks (EIP-1167 minimal proxy, Diamond loupe functions).
 
 ### Upgrade History Reconstruction
 

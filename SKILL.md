@@ -1,6 +1,6 @@
 ---
 name: defi-onchain-analytics
-description: Performs DeFi on-chain analytics via raw JSON-RPC. Use when profiling wallets, analyzing protocols or pools, inspecting token metrics, evaluating DEX liquidity, reading smart contract state, tracing exploit fund flows, or investigating incidents on EVM chains (Ethereum, Arbitrum, Base, BSC, Polygon, Katana). Do NOT use for off-chain data, CEX analytics, or non-EVM chains.
+description: Use when profiling wallets, analyzing protocols or pools, inspecting token metrics, evaluating DEX liquidity or LP/vault performance, reading smart contract state, resolving proxy contracts and unknown interfaces, tracing exploit fund flows, or investigating on-chain incidents on EVM chains (Ethereum, Arbitrum, Base, BSC, Polygon, Katana). Make sure to use this skill whenever the user mentions on-chain data, RPC calls, blockchain analysis, DeFi positions, pool metrics, vault share prices, rebalancing events, contract storage, or LP performance — even if they don't explicitly ask for "on-chain analytics". Do NOT use for off-chain data, CEX analytics, or non-EVM chains.
 ---
 
 # DeFi On-Chain Analytics
@@ -23,22 +23,34 @@ Every step is tagged with its required tier:
 
 **Default = Tier A only.** Higher tiers are opt-in. If unavailable, disclose the gap — never silently skip.
 
-## The 6-Phase Workflow
+## Looped Workflow
+
+Real investigations evolve — discovery changes the question. The workflow supports iteration, not just linear execution.
 
 ```dot
 digraph phases {
   rankdir=LR;
-  P0 [label="Phase 0\nScoping Gate" shape=box style=filled fillcolor="#ffcccc"];
-  P1 [label="Phase 1\nReconnaissance" shape=box];
-  P2 [label="Phase 2\nData Collection" shape=box];
+  P0 [label="Phase 0\nScoping" shape=box style=filled fillcolor="#ffcccc"];
+  P1 [label="Phase 1\nDiscovery" shape=box];
+  P2 [label="Phase 2\nCollection" shape=box];
   P3 [label="Phase 3\nInterpretation" shape=box];
   P4 [label="Phase 4\nSanity Check" shape=box];
   P5 [label="Phase 5\nSynthesis" shape=box];
-  P0 -> P1 -> P2 -> P3 -> P4 -> P5;
+  Rescope [label="Rescope?" shape=diamond style=filled fillcolor="#ffffcc"];
+  P0 -> P1 -> P2 -> P3 -> Rescope;
+  Rescope -> P0 [label="new question\nemerged" style=dashed];
+  Rescope -> P4 -> P5 [label="no"];
 }
 ```
 
-**No phase may be skipped. No RPC calls before Phase 0 is complete.**
+**Why no skipping phases:** Phase 0 prevents wasted RPC calls on wrong targets or wrong chains. A single `eth_getLogs` to the wrong address can eat your entire rate limit. Lock scope first, then query.
+
+### Scope Amendment (Re-entry)
+
+When Phase 3 interpretation reveals a new analytical question that changes the objective:
+
+1. **Lightweight re-entry:** Skip intent discovery. Only update: target, objective, anchor policy, additional pattern files. Preserve all existing anchors and evidence.
+2. **Hard cap:** Max 3 scope amendments per session. Beyond that, synthesize what you have and list remaining questions as Open Questions in Phase 5. This prevents infinite investigation loops.
 
 ---
 
@@ -46,7 +58,7 @@ digraph phases {
 
 > **This phase is a guided conversation, NOT a passive form.**
 > Read `references/scoping-guide.md` for detailed consultation techniques, depth/angle options, field-by-field asking guidance, and anti-patterns.
-> **NEVER silently assume — always surface your assumptions as explicit questions.**
+> **Silently assuming scope details is the #1 cause of wasted RPC calls.** Surface your assumptions as explicit questions.
 
 #### Analysis Modes
 
@@ -59,6 +71,8 @@ digraph phases {
 | Security review / audit prep | 🛡️ Security | Admin keys, upgrades, custody |
 | General curiosity / learning | 🔭 Exploratory | Broad survey, teach as you go |
 
+If the user's request clearly maps to one mode, **propose it** rather than asking from scratch.
+
 #### Required Fields
 
 | # | Field | Required? | Default |
@@ -66,13 +80,16 @@ digraph phases {
 | 1 | **Target** | Yes | — |
 | 2 | **Chain** | Yes | — |
 | 3 | **Objective** | Yes | — |
-| 4 | **Hypothesis** | No | "Exploratory" |
-| 5 | **Timeframe** | No | Per depth choice |
-| 6 | **Expected output** | No | "Structured findings + narrative" |
-| 7 | **Data source policy** | No | raw RPC only |
-| 8 | **Anchor policy** | No | `safe` if supported |
-| 9 | **Capability tier** | Auto | Probe-based |
-| 10 | **RPC endpoint** | Auto | From `references/rpc-endpoints.ts` |
+| 4 | **Unit of analysis** | Yes | — |
+| 5 | **Hypothesis** | No | "Exploratory" |
+| 6 | **Timeframe** | No | Per depth choice |
+| 7 | **Expected output** | No | "Structured findings + narrative" |
+| 8 | **Data source policy** | No | raw RPC only |
+| 9 | **Anchor policy** | No | `safe` if supported |
+| 10 | **Capability tier** | Auto | Probe-based |
+| 11 | **RPC endpoint** | Auto | From `references/rpc-endpoints.ts` |
+
+**Unit of analysis** — Declare what object is being analyzed: `wallet` / `contract` / `vault` / `pool` / `protocol` / `token`. This prevents scope drift by making the analytical focus explicit. When the unit changes mid-investigation, that's a scope amendment trigger.
 
 #### Anchor Policy Options
 
@@ -81,7 +98,19 @@ digraph phases {
 | `safe` | — | `safe` tag | **Default.** Finalized, no reorg risk. |
 | `pinned` | specific hex | specific hex | Reproducible snapshot at known block. |
 | `latest` | — | `latest` tag | Real-time data, accepts reorg risk. |
-| `historical-scan` | `0` or contract creation block | `safe` | **Full-chain event scanning.** Each event gets its own timestamp via `eth_getBlockByNumber`. Reproducibility footer must list the full scan range and the completion block. Use adaptive chunking (see `references/rpc-field-guide.md` Section 5). |
+| `historical-scan` | `0` or contract creation block | `safe` | **Full-chain event scanning.** Each event gets its own timestamp via `eth_getBlockByNumber`. Use adaptive chunking (see `references/rpc-field-guide.md` Section 5). |
+
+#### Decision Dependencies
+
+Some data sources are not just enrichment — they change the analytical conclusion:
+
+| Analysis Type | Decision-Critical Data | Without It |
+|---|---|---|
+| LP/vault performance | External rewards (Merkl, Angle, etc.) | Raw alpha appears negative when net return is positive |
+| Token due diligence | Vesting schedule + unlock events | Circulating supply appears stable when unlocks are imminent |
+| Protocol risk | Oracle staleness + backup fallback | Protocol appears healthy when oracle is stale |
+
+If the analysis mode is 📊 Due Diligence or 📈 Monitoring and a decision-critical source is unavailable, flag it as: `⚠️ DECISION-CRITICAL GAP: [source] unavailable. Conclusion may reverse with this data.`
 
 #### Blind Spot Disclosure
 
@@ -89,59 +118,48 @@ Before confirming, proactively flag what the analysis CANNOT see. See `reference
 
 #### Confirmation Gate
 
-**Always present a structured summary before proceeding. NEVER skip this.**
+Present a structured summary before proceeding. Skipping confirmation risks running hundreds of calls only to discover you answered the wrong question.
 
 ```
 ═══ ANALYSIS PLAN ═══
 🎯 Target: [address/protocol/token]
 🔗 Chain: [chain]
 📋 Objective: [clear restatement]
-🔬 Approach: [depth] + [angle]
+🔬 Unit: [wallet/contract/vault/pool/protocol/token]
 🧪 Hypothesis: [if any, or "Exploratory"]
 ⏱️ Timeframe: [window]
 📊 Output: [format]
 ⚡ Data policy: [Tier A / A+D / etc.]
 ⚓ Anchor: [safe / pinned / latest / historical-scan]
 ⚠️ Blind spots: [key limitations]
-
+⚠️ Decision gaps: [decision-critical sources unavailable, if any]
 Estimated effort: ~[N] RPC calls
 ═════════════════════
 ```
 
 ```
 ═══ ANALYTICAL CONTRACT ═══
-⚙ Tier A baseline: [list the RPC calls that MUST be made before any Tier D source is used]
+⚙ Tier A baseline: [list the specific RPC calls that must be made before any Tier D source is used]
 📜 Script trigger: [YES if any dependent flow / eth_getLogs scan / multi-hop trace is needed]
 🔍 Root cause standard: Any causal claim sourced from Tier D only → tagged [UNVERIFIED] until Tier A/B corroboration
 🧪 Claim typing: All major findings typed as FACT_ONCHAIN / INFERENCE_ONCHAIN / EXTERNAL_ASSERTION before Phase 4
 ═══════════════════════════
 ```
 
-*Example of a filled-in contract (incident forensics):*
-```
-═══ ANALYTICAL CONTRACT ═══
-⚙ Tier A baseline: eth_getTransactionReceipt(attack_tx), eth_getLogs(USR token Transfer), eth_getBalance(exploiter)
-📜 Script trigger: YES — multi-hop fund flow tracing required; start from forensic-script-scaffold.ts
-🔍 Root cause standard: "AWS KMS compromise" is EXTERNAL_ASSERTION [UNVERIFIED] until eth_getLogs confirms SERVICE_ROLE key usage pattern
-🧪 Claim typing: All findings typed before Phase 4; no EXTERNAL_ASSERTION used as root cause without Tier A/B corroboration
-═══════════════════════════
-```
+See `references/scoping-guide.md` for a filled-in example of the Analytical Contract.
 
 **Gate rules:**
-- User must confirm BOTH the Analysis Plan AND the Analytical Contract before Phase 1 begins.
-- If user says "just do it" → present the plan, then proceed.
-- Auto-probe capability tier (Field 9) via test calls. Timeout/failure = assume Tier A.
-- Auto-select RPC endpoint (Field 10): read `references/rpc-endpoints.ts` → pick top Tier S/1 → probe with `eth_chainId` → fallback on failure. For BSC, MUST use endpoint with `getLogs: true` (Tier 1/2 only).
+- User confirms BOTH the Analysis Plan AND the Analytical Contract before Phase 1 begins. If user says "just do it" → present the plan, then proceed.
+- Auto-probe capability tier (Field 10) via test calls. Timeout/failure = assume Tier A.
+- Auto-select RPC endpoint (Field 11): read `references/rpc-endpoints.ts` → pick top Tier S/1 → probe with `eth_chainId` → fallback on failure. For BSC, use endpoint with `getLogs: true` (Tier 1/2 only).
 - **Cross-chain check:** If target involves bridges or multi-chain activity, flag and expand scope.
 - Load relevant pattern file(s) based on objective (see Pattern Loading below).
 
 ---
 
-### Phase 1: Reconnaissance
+### Phase 1: Discovery
 
-**RPC-first. External metadata is enrichment, not baseline.**
-
-Read `references/abi-fetching.md` for proxy detection. Read `references/rpc-field-guide.md` for method reference.
+**RPC-first. External metadata is enrichment, not baseline.** The reason: Tier D labels drift and degrade over time. If you build conclusions on Tier D first, you have no way to detect when the label becomes wrong. Tier A data is immutable on-chain.
 
 **Step 1 — Contract Classification `[CORE]`:**
 1. `eth_getCode(address)` — EOA (empty) or contract?
@@ -149,15 +167,17 @@ Read `references/abi-fetching.md` for proxy detection. Read `references/rpc-fiel
 3. Bytecode pattern match for EIP-1167 minimal clone
 4. If proxy detected → read implementation → repeat on implementation
 
-**Step 2 — Proxy Pattern Identification `[CORE]`:**
+**Step 2 — Interface Recovery `[CORE]` (mandatory for contracts):**
 
-| Pattern | Detection |
-|---------|-----------|
-| Transparent / UUPS | EIP-1967 implementation slot non-zero |
-| Beacon | EIP-1967 beacon slot → `eth_call` beacon's `implementation()` |
-| EIP-1167 Minimal Clone | Bytecode prefix `363d3d373d3d3d363d73` |
-| Diamond (EIP-2535) | Loupe functions + `DiamondCut` events |
-| Non-standard | `[TRACE]` — trace delegatecall targets |
+> When `eth_getCode` returns non-empty and EIP-1967 slots are non-zero, read `references/abi-fetching.md` for the full proxy resolution and selector extraction procedures.
+
+If target is a proxy:
+1. Resolve implementation address (EIP-1967 → beacon → bytecode → trace)
+2. Attempt ABI recovery: Etherscan → Sourcify → 4byte → bytecode extraction
+3. **If no ABI found:** Extract selectors from implementation bytecode, probe each via `eth_call` to classify return types. See `references/proxy-resolver-scaffold.ts` for a ready-to-use script.
+4. **Function selectors vary across implementations of the same protocol.** `getTotalAmounts()` (0xd4789053) may not exist — the equivalent function could have a different name and selector (e.g., 0xc4a7761e). Always verify by probing the actual implementation. Never assume from documentation.
+
+This step is not optional. For any contract beyond a standard ERC-20, interface discovery typically determines whether the investigation succeeds or fails. Skipping it means every subsequent `eth_call` is a guess.
 
 **Step 3 — Address Context `[CORE]`:**
 - `eth_getBalance`, `eth_getTransactionCount`, `eth_getStorageAt` for owner/admin slots
@@ -167,22 +187,9 @@ Read `references/abi-fetching.md` for proxy detection. Read `references/rpc-fiel
 - Etherscan `getsourcecode`, Sourcify, 4byte.directory
 - Entity labels → heuristic, confidence auto-downgraded
 
-**Tier D Precondition:** Before using any Tier D source for a given finding, the equivalent Tier A query MUST already exist in the evidence register. Tier D enriches; it never substitutes. If Tier A is unavailable, disclose the gap — do not fill it with Tier D.
+**Tier D Precondition:** Before using any Tier D source for a given finding, the equivalent Tier A query must already exist in the evidence register. Tier D enriches; it never substitutes. The reason: if the Tier D source is wrong or stale, you need the Tier A data to detect the discrepancy.
 
 **Output: Reconnaissance summary table.** Every field tagged with source tier. Unavailable fields marked `N/A (requires Tier X)`.
-
-```
-=== RECONNAISSANCE SUMMARY ===
-Target: 0x...
-Chain: Ethereum
-Type: Contract (Proxy: UUPS → Implementation: 0x...)
-Native Balance: 1.5 ETH [CORE]
-Nonce: 4,231 [CORE]
-Owner: 0x... (EOA) [CORE]
-Deployer: N/A (requires Tier D)
-Capability tier: A (standard RPC)
-Anchor: block 19,500,000 (safe)
-```
 
 ---
 
@@ -190,15 +197,15 @@ Anchor: block 19,500,000 (safe)
 
 **Rule: Block-anchor everything. Probe before assuming. Disclose gaps.**
 
-Read `references/rpc-field-guide.md` for method details. Read `references/common-abis.md` for event signatures.
+Read `references/rpc-field-guide.md` when choosing RPC methods or when `eth_getLogs` returns an error code. Read `references/common-abis.md` for event signatures.
 
 **Tier 1 — Batch Reads `[CORE]`:**
 - Multicall3 or JSON-RPC batch, pinned to single block number
 - Use for: balances, vault positions, pool reserves, oracle prices
 
 **Tier 2 — Event Logs `[CORE]`:**
-- Never unbounded block range
-- Adaptive chunking: probe provider limit, bisect on cap, paginate
+- Unbounded block ranges trigger provider-side timeouts or 10K result caps, silently truncating your event history. Always bound ranges.
+- Adaptive chunking: probe provider limit, bisect on cap, paginate. See `references/rpc-field-guide.md` Section 5 for the algorithm and TypeScript template.
 - Filter: `address + topics[0]` when possible; adapt for anonymous/factory scans
 
 **Tier 3 — Traces `[TRACE]` (opportunistic):**
@@ -209,7 +216,7 @@ Read `references/rpc-field-guide.md` for method details. Read `references/common
 
 **Tier 4 — State Override `[TRACE]`:**
 - `eth_call` with `stateOverride` / `blockOverride` for hypothesis testing
-- Use `stateDiff` (merge) not `state` (wipe) unless intended
+- Use `stateDiff` (merge) not `state` (wipe) unless intended. Accidental use of `state` zeros out all unlisted slots, producing garbage results.
 
 **Tier 5 — Specialized (probe first):**
 - `eth_getProof` `[CORE]`, `eth_getBlockReceipts` `[varies]`, `eth_createAccessList` `[CORE]`
@@ -226,11 +233,13 @@ Read `references/rpc-field-guide.md` for method details. Read `references/common
 
 Scripts must be self-contained and runnable via `node` or `npx tsx`.
 
-**Scaffold:** For incident forensics, start from `references/forensic-script-scaffold.ts` — covers tx receipt decoding, adaptive log scanning, multi-hop fund flow tracing, and evidence register output.
+**For bulk data collection (>100 RPC calls):** Read `references/data-collection-scaffold.ts` — covers rate limiting, endpoint rotation, checkpoint/resume, and CSV output. This saves reinventing these patterns from scratch each time.
+
+**Scaffold:** For incident forensics, start from `references/forensic-script-scaffold.ts`.
 
 **Execution discipline:**
 - Log purpose before every query
-- Decode all hex inline — never leave raw hex
+- Decode all hex inline — raw hex in output means the analysis is unreadable to the user
 - Use fallback endpoints on failure
 - Disclose when methods are skipped due to tier
 
@@ -271,6 +280,8 @@ Read the relevant domain pattern file for analytical methods. Apply the Investig
 | ERC-4626 shares | Share ≠ underlying | Read `convertToAssets()` |
 | Wrapped staking | Conversion rate drifts | Read wrapper rate function |
 
+**Scope amendment trigger:** If interpretation reveals a new analytical question that changes the original objective, re-enter Phase 0 in amendment mode (see Scope Amendment above).
+
 ---
 
 ### Phase 4: Sanity Check
@@ -294,20 +305,26 @@ Read the relevant domain pattern file for analytical methods. Apply the Investig
 
 ### Phase 5: Synthesis
 
-**7 mandatory output sections:**
+Output profile determined by Phase 0 analysis mode. The reproducibility footer is always required — without it, nobody can verify or reproduce your findings.
 
-1. **Structured findings** — tables, human-readable values ($1.5M, 1,500 ETH), block references
-2. **Narrative** — answers Phase 0 objective, addresses hypothesis
-3. **Confidence matrix** — per finding: category, confidence, tier, cross-validated?
-4. **Visualization** — Mermaid.js flow diagrams for fund flows
-5. **Open questions** — what needs further investigation
-6. **Reproducibility footer:**
+| Mode | Profile | Required Sections |
+|---|---|---|
+| 🔍 Forensic | Full Evidence Grade | All 7: Findings, Narrative, Confidence Matrix, Visualization, Open Questions, Reproducibility Footer, Evidence Register |
+| 📊 Due Diligence | Performance Analysis | Findings + Benchmarks + Confidence Matrix + Open Questions + Reproducibility Footer |
+| 📈 Monitoring | Snapshot | Current State + Health Indicators + Alerts + Reproducibility Footer |
+| 🏗️ Protocol Assessment | Diligence Memo | Executive Summary + Key Metrics + Risk Factors + Reproducibility Footer |
+| 🛡️ Security | Security Report | Findings + Severity + Recommendations + Evidence Register + Reproducibility Footer |
+| 🔭 Exploratory | Survey | Findings + Narrative + Open Questions + Reproducibility Footer |
+
+**Reproducibility footer format:**
 ```
 Chain / Anchor block / Anchor policy / RPC provider
 Capability tier / Trace-enabled / Archive / External sources
 Total RPC calls / Analysis timestamp
 ```
-7. **Evidence register** — per finding: claim type (`FACT_ONCHAIN` / `INFERENCE_ONCHAIN` / `EXTERNAL_ASSERTION`), RPC method, params, block ref, cross-validation
+
+**Evidence register** (required for 🔍 Forensic and 🛡️ Security, recommended for others):
+Per finding: claim type (`FACT_ONCHAIN` / `INFERENCE_ONCHAIN` / `EXTERNAL_ASSERTION`), RPC method, params, block ref, cross-validation.
 
 ---
 
@@ -316,9 +333,10 @@ Total RPC calls / Analysis timestamp
 | Objective keywords | Load |
 |-------------------|------|
 | wallet, address, PnL, whale, smart money, entity | `patterns/wallet-analytics.md` |
-| TVL, protocol, risk, yield, pool, vault, lending | `patterns/protocol-analytics.md` |
+| TVL, protocol, risk, yield, pool, lending | `patterns/protocol-analytics.md` |
 | token, holder, distribution, supply, vesting | `patterns/token-analytics.md` |
 | DEX, swap, liquidity, LP, impermanent loss, volume | `patterns/dex-analytics.md` |
+| vault, CLAMM, concentrated liquidity, share price, rebalance, LP performance | `patterns/clamm-vault-analytics.md` |
 | contract, storage, events, proxy, upgrade, ABI | `patterns/contract-inspection.md` |
 
 Multiple files may load if objective spans domains. Reference files (`references/`) loaded on-demand during Phase 1-2. For incident forensics, `references/forensic-script-scaffold.ts` is the canonical starting script.
@@ -329,23 +347,12 @@ During Phase 2-3, load additional patterns when the investigation reveals new di
 
 | Trigger (during analysis) | Load |
 |--------------------------|------|
-| Entities or wallets identified that need profiling or clustering | `patterns/wallet-analytics.md` |
-| Unknown contract encountered requiring ABI resolution or storage inspection | `patterns/contract-inspection.md` |
-| Token supply, holder distribution, or vesting analysis needed | `patterns/token-analytics.md` |
-| Protocol-level risk, TVL, or oracle dependency assessment triggered | `patterns/protocol-analytics.md` |
-| DEX swap, liquidity, or position analysis required | `patterns/dex-analytics.md` |
-
-### Composed Investigation Recipes
-
-Common multi-pattern investigations and their recommended pattern combinations:
-
-| Investigation Type | Primary | Companions | Key Flow |
-|-------------------|---------|------------|----------|
-| **Market Structure** — who provides liquidity, how distributed, why | dex-analytics | wallet-analytics, contract-inspection | Position enumeration → owner resolution → entity clustering → funding trace |
-| **Whale Tracking** — identify, profile, predict behavior | wallet-analytics | token-analytics, dex-analytics | Balance snapshot → transfer history → behavioral fingerprinting → DEX activity |
-| **Protocol Risk** — TVL health, admin risk, oracle dependency | protocol-analytics | contract-inspection | TVL decomposition → proxy/admin inspection → oracle staleness check |
-| **Incident Forensics** — exploit trace, fund flow, counterparty ID | wallet-analytics | contract-inspection, dex-analytics | Pre-attack screen (TVL trajectory, 72h suspicious activity, capital flow) → Fund flow trace → contract inspection → DEX swap analysis → entity clustering |
-| **Token Due Diligence** — supply integrity, holder risk, vesting pressure | token-analytics | wallet-analytics, contract-inspection | Supply audit → holder concentration → whale behavior → vesting schedule |
+| Entities or wallets identified that need profiling | `patterns/wallet-analytics.md` |
+| Unknown contract requiring ABI resolution | `patterns/contract-inspection.md` |
+| Token supply or holder distribution analysis needed | `patterns/token-analytics.md` |
+| Protocol-level risk or TVL assessment triggered | `patterns/protocol-analytics.md` |
+| DEX swap or LP position analysis required | `patterns/dex-analytics.md` |
+| Vault rebalance, share-price, or concentrated IL analysis | `patterns/clamm-vault-analytics.md` |
 
 ## Investigation Discipline — 7-Layer Defense
 
@@ -369,25 +376,21 @@ If these appear in your reasoning → treat as investigation signal, not conclus
 
 ### Common Rationalizations
 
-| Rationalization | Reality |
+| Rationalization | Why It's Wrong |
 |----------------|---------|
-| "Let me just quickly check the balance" | Complete Phase 0 first. Even a balance check needs chain + anchor. |
-| "I don't need to probe the provider" | Provider capabilities vary wildly. Probe once, save time later. |
-| "This is just a simple token lookup" | Simple lookups still need the scoping form. Discipline prevents drift. |
-| "I'll decode the hex later" | Decode inline. Raw hex in output = failed analysis. |
-| "The block range is probably fine" | Never guess. Adaptive chunk or risk timeout/truncation. |
-| "Traces aren't available so I'll skip fund flow" | Disclose the gap. Don't silently omit native ETH flows. |
+| "Let me just quickly check the balance" | Even a balance check needs chain + anchor. Without Phase 0, you might query the wrong chain. |
+| "I don't need to probe the provider" | Provider capabilities vary wildly. Probing once prevents hours of debugging failed calls. |
+| "This is just a simple token lookup" | Simple lookups still need the scoping form. Today's "simple lookup" becomes tomorrow's "why did I query the wrong address?" |
+| "I'll decode the hex later" | Raw hex in output means anyone reviewing your work has to redo the decoding. Decode inline. |
+| "The block range is probably fine" | Guessing ranges risks timeout or silent truncation. Adaptive chunk or get incomplete data. |
+| "Traces aren't available so I'll skip fund flow" | The gap must be disclosed. Don't silently omit native ETH flows — they may contain the answer. |
 
 ## Red Flags — STOP
 
-- Making RPC calls before completing Phase 0
-- Using `"latest"` without explicitly choosing it in anchor policy
-- Leaving raw hex values in output
-- Querying `eth_getLogs` without bounded block range
-- Not disclosing when a method is skipped due to tier
-- Mixing data from different blocks without anchoring
-- Trusting entity labels without cross-referencing raw data
-- Using Tier D source (Etherscan, labels, reports) before the equivalent Tier A query exists in the evidence register
-- Accepting an EXTERNAL_ASSERTION as root cause without Tier A/B corroboration
-- **Dismissing a finding without first asking "What would make this significant?"**
-- **Reporting a conclusion without disclosing what analysis was NOT performed**
+These five signals indicate you're violating the workflow's core purpose. If any appear, stop and correct course:
+
+- Making RPC calls before completing Phase 0 — you're guessing, not analyzing
+- Using `"latest"` without explicitly choosing it — you're accepting reorg risk unconsciously
+- Leaving raw hex values in output — your analysis is unreadable
+- Querying `eth_getLogs` without bounded block range — you're risking silent truncation
+- Dismissing a finding without asking "What would make this significant?" — you're rationalizing, not investigating
