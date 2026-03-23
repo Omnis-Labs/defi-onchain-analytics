@@ -240,6 +240,8 @@ Scripts must be self-contained and runnable via `node` or `npx tsx`.
 
 Read the relevant domain pattern file for analytical methods. Apply the Investigation Discipline protocol throughout this phase (see below and `references/investigation-discipline.md`).
 
+**Claim typing — mandatory for every major finding:** `FACT_ONCHAIN` (proven by Tier A/B artifact) / `INFERENCE_ONCHAIN` (derived from Tier A/B) / `EXTERNAL_ASSERTION` (from Tier D — tag `[UNVERIFIED]` if used as root cause without Tier A/B corroboration). See Phase 3 Exit Gate in `references/investigation-discipline.md`.
+
 **Classification-first.** Tag every finding before narrative:
 
 | Category | Source | Confidence | Min Tier |
@@ -305,7 +307,7 @@ Chain / Anchor block / Anchor policy / RPC provider
 Capability tier / Trace-enabled / Archive / External sources
 Total RPC calls / Analysis timestamp
 ```
-7. **Evidence register** — per finding: RPC method, params, block ref, cross-validation
+7. **Evidence register** — per finding: claim type (`FACT_ONCHAIN` / `INFERENCE_ONCHAIN` / `EXTERNAL_ASSERTION`), RPC method, params, block ref, cross-validation
 
 ---
 
