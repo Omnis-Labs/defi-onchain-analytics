@@ -34,6 +34,17 @@ If any of these appear in your reasoning during Phase 3 or Phase 4, **STOP** —
 | "this is just MEV / arbitrage" | MEV can mask deliberate manipulation or insider activity | Trace the MEV actor: who profits? Related to protocol team? |
 | "the timing is coincidental" | Temporal correlation is one of the strongest on-chain signals | Quantify: what's the probability of this timing by chance? |
 
+### Methodological Rationalizations
+
+If any of these appear in your workflow during Phase 1-4, **STOP** — treat it as a process failure that must be corrected before interpretation continues:
+
+| Banned Phrase | Why It's Dangerous | Required Action |
+|---|---|---|
+| "Etherscan shows the same thing" | Tier D substituting Tier A creates unverifiable dependency and confidence drift | Query the equivalent RPC method; Tier D remains enrichment only |
+| "The [security firm/report] already explains this" | External assertion displaces on-chain falsification and halts evidence building | Define what Tier A/B evidence would confirm or deny the claim, then query it |
+| "I have enough to write the report" | Narrative completion bias terminates investigation before causal validation | Check every causal claim for Tier A/B backing before synthesis |
+| "The fund flow is clear enough" | Partial-flow closure hides intermediate hops, bridges, or native ETH paths | Require hop-level evidence (tx hash + log index/trace path) and disclose missing legs |
+
 ### Self-Check Protocol
 
 Before advancing from Phase 3 to Phase 4:
@@ -76,6 +87,28 @@ Between passes, carry forward ONLY:
 - A focused investigation question for the next pass
 
 Do NOT carry forward: conclusions, narratives, or interpretive framing. Each pass reasons from evidence, not prior conclusions. This prevents confirmation bias from compounding across passes.
+
+---
+
+## Phase 3 → Phase 4 Exit Gate — Artifact-Based
+
+Phase 3 cannot close on narrative confidence. It closes only when claims and dismissals are converted into auditable artifacts.
+
+### Claim Typing (mandatory per significant finding)
+
+| Claim Type | Definition | Rule |
+|---|---|---|
+| `FACT_ONCHAIN` | Directly proven by Tier A/B artifact (state read, receipt, log, proof) | Include artifact reference (method + block + tx/log pointer) |
+| `INFERENCE_ONCHAIN` | Reasoned conclusion derived from Tier A/B artifacts | Include explicit supporting artifacts + falsification condition |
+| `EXTERNAL_ASSERTION` | Claim sourced from Tier D (labels, reports, media, commentary) | Cannot serve as root cause unless corroborated by Tier A/B; else tag `[UNVERIFIED]` |
+
+### Exit Gate Checklist (hard gate before Phase 4)
+
+- [ ] Dismissal Log completed: every dismissed/de-prioritized anomaly recorded with reason
+- [ ] Every major causal claim typed: `FACT_ONCHAIN` / `INFERENCE_ONCHAIN` / `EXTERNAL_ASSERTION`
+- [ ] Any `EXTERNAL_ASSERTION` used as root cause is either upgraded with Tier A/B evidence or explicitly tagged `[UNVERIFIED]`
+- [ ] At least one adversarial counter-hypothesis documented per major causal claim
+- [ ] Layer 6 adversarial questions answered for each significant finding
 
 ---
 
